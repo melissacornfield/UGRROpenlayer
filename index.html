@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+    <link rel="stylesheet" href="./resources/ol.css">
+    <style>
+      html, body, #map {
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        margin: 0;
+      }
+    </style>
+    <title>OpenLayers Time-Based Map</title>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="timeSlider" style="position: absolute; top: 10px; left: 10px;">
+      <input type="range" id="timeRange" min="0" max="50" step="1">
+      <span id="timeLabel">Time: 0</span>
+    </div>
+    <script src="./resources/ol.js"></script>
+    <script src="layers/ShapefileforUGRR_0.js"></script>
+    <script src="styles/ShapefileforUGRR_0_style.js"></script>
+    <script>
+    function formatDate(date) {
+        var month = date.getMonth() + 1; // Months are zero-indexed
+        var day = date.getDate();
+        var year = date.getFullYear();
+
+        // Add leading zeros if necessary
+        month = month < 10 ? '0' + month : month;
+        day = day < 10 ? '0' + day : day;
+
+        return month + '/' + day + '/' + year;
+      }
+
+      // Parse the GeoJSON data and create the OpenLayers vector source
+      var vectorSource = new ol.source.Vector({
+        features: new ol.format.GeoJSON().readFeatures(json_ShapefileforUGRR_0, {
+          featureProjection: 'EPSG:3857' // Adjust projection as needed
+        })
+      });
+      // Create a vector layer to display the data
+      var vectorLayer = new ol.layer.Vector({
+        source: vectorSource
+      });
+
+      // Set up the OpenLayers map
+      var map = new ol.Map({
+        target: 'map',
+        layers: [
+          new ol.layer.Tile({
+            source: new ol.source.OSM()
+          }),
+          vectorLayer
+        ],
+        view: new ol.View({
+          center: [0, 0],
+          zoom: 4
+        })
+      });
+
+      // Create a time control (slider)
+      var timeSlider = document.getElementById('timeRange');
+      var timeLabel = document.getElementById('timeLabel');
+      // Update the map based on the slider value (time)
+      var initialDate = new Date('1800-05-01'); // Start with 1st Jan 1840
+      var initialDataLabel = new Date('1850-01-02');
+      timeLabel.innerText = formatDate(new Date(initialDataLabel.setFullYear(initialDataLabel.getFullYear())));
+
+      timeSlider.addEventListener('input', function () {
+        var timeValue = timeSlider.value;
+
+        console.log(timeValue);
+        // Calculate the new date by adding 'timeValue' years to the initial date
+        var currentTime = new Date(initialDate); // Create a copy of the initial date
+        currentTime.setFullYear(initialDate.getFullYear() + parseInt(timeValue)); // Increment the year by timeValue
+        timeLabel.innerText = formatDate(new Date(currentTime.setFullYear(currentTime.getFullYear() + parseInt(timeValue))));
+
+        // Filter the features based on the time range
+        var filteredFeatures = json_ShapefileforUGRR_0.features.filter(function (feature) {
+          var startDate = new Date(feature.properties['Start Date']);
+          //var endDate = new Date(feature.properties['End Date']);
+          var endDate = new Date('2010-05-01');
+          console.log(currentTime);
+          console.log(startDate);
+          console.log(endDate);
+          console.log(currentTime >= startDate && currentTime <= endDate);
+
+          // Adjust time range logic as needed, e.g., filtering by the slider value
+          return currentTime >= startDate && currentTime <= endDate;
+        });
+
+        // Clear previous features and add only the filtered ones
+        vectorSource.clear();
+        var features = new ol.format.GeoJSON().readFeatures({
+          "type": "FeatureCollection",
+          "features": filteredFeatures
+        }, {
+          featureProjection: 'EPSG:3857'
+        });
+
+        vectorSource.addFeatures(features); // Add filtered features
+      });
+
+    </script>
+  </body>
+</html>
